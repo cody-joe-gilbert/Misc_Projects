@@ -1,0 +1,289 @@
+
+<!-- saved from url=(0063)https://cs.nyu.edu/courses/spring19/CSCI-GA.2560-001/prog2.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title> Programming Assignment 2 </title>
+</head><body><h1> Programming Assignment 2 </h1>
+
+<p>
+Assigned: Feb. 25<br>
+Due: Apr. 1
+
+</p><h3> Overview </h3>
+
+<p>
+In this assignment, you are to implement the Davis-Putnam algorithm and use
+it to solve a simple parallel program optimization problem.
+
+</p><p>
+The problem is as follows. You are given 
+</p><ul>
+<li>(1) a collection of N memory locations (registers).
+</li><li>(2) a complete specification of the values in the locations at time 0
+</li><li>(3) a time limit K &lt; N.
+</li><li>(4) a goal of the arrangement of values in the registers at time K.
+</li></ul>
+
+<p>
+The problem is to generate a timed sequence of parallel assignment
+statements that will achieve the goal, starting from the start state.
+The usual rule for mutual exclusion on readers/writers applies:
+the same source can be multiply
+read in a given time cycle, but a source cannot be both read and written to in
+a given time cycle, and certainly cannot be multiply written to in a given
+time cycle.
+
+</p><p>
+<b> Example 1 </b> <br>
+Start:  R1 = A, R2 = B, R3 = C, R4 = D. <br>
+Goal:   R2 = A, R3 = A, R4 = C. <br>
+K = 2.
+
+</p><p>
+<b> Solution </b> <br>
+Cycle 1: R2 = R1; R4 = R3. <br>
+Cycle 2: R3 = R1.
+
+</p><p>
+<b> Example 2 </b> <br>
+Start:  R1 = A, R2 = A, R3 = B, R4 = B. <br>
+Goal:   R1 = B, R2 = B, R3 = A, R4 = A. <br>
+K = 2.
+
+</p><p>
+<b> Solution </b> <br>
+Cycle 1: R3 = R1; R2 = R4. <br>
+Cycle 2: R1 = R2; R4 = R3.
+
+</p><p>
+<b> Example 3: </b> <br>
+Start:  R1 = A, R2 = B, R3 = C. <br>
+End: R1 = B, R2 = A. <br>
+K = 2 <br>
+<b> No solution </b>
+
+
+</p><p>
+<b> Example 4: </b> <br>
+Start:  R1 = A, R2 = B, R3 = C. <br>
+End: R1 = B, R2 = A. <br>
+K = 3 
+
+
+</p><p>
+<b> Solution </b> <br>
+Cycle 1: R3 = R1  <br>
+Cycle 2: R1 = R2 <br>
+Cycle 3: R2 = R3
+
+</p><p>
+<b> Example 5: </b> <br>
+Start:  R1 = A, R2 = B, R3 = C. <br>
+End: R1 = B, R2 = A. R3 = C. <br>
+K = 3 <br>
+<b> No solution </b>
+
+</p><p>
+(I think --- I am not 100% sure --- that there is actually a polynomial time 
+algorithm for this, but ignore that fact.)
+
+
+</p><p>
+You will write three programs.
+</p><ol>
+<li>  An implementation of the Davis-Putnam procedure, which takes 
+as input a set of clauses and outputs either a satisfying valuation, 
+or a statement that the clauses cannot be satisfied.
+</li><li>  A front end, which takes as input a  problem specification
+and outputs  a set of clauses that can be input to (1).
+</li><li>  A back end, which takes as input the output of (1) and
+translates it into a solution to the original problem.
+</li></ol>
+
+<h3> Compiling the programming problem to propositional logic </h3>
+Any problem instance can be expressed propositionally as follows: 
+
+<h3> Atoms </h3>
+There are two kinds of atoms
+<ul>
+<li>1. Value(R,V,I). The value of register R at time I is value V.
+</li><li>2. Assign(RA, RB, I). The statement "RA = RB" is executed at time I.
+</li></ul>
+
+<p>
+If there is
+a maximum of K steps, then for each time I=0 ... K,
+there should be an atom Value(R,V,I) for each register R and value V. <br>
+For each I=0 .. K-1 there should be an atom Assign(RA,RB,I) for each
+pair of registers RA, RB.
+
+
+</p><h3> Axioms </h3>
+There are 6 types of axioms.
+
+<p><b> Unique value </b> <br>
+If Value(R,VX,I) and VY is any value not equal to VX then not Value(R,VY,I)
+
+</p><p><b> Positive effects of actions </b> <br>
+If Assign(RA,RB,I) and Value(RB,V,I) then Value(RA,V,I+1).
+
+</p><p><b> Frame axiom (no change if no assignment) </b>
+If Value(R,VX,I) and not Assign(R,R1,I) and not Assign(R,R2,I) and ... and 
+not Assign(R,Rn,I) then Value(R,VX,I+1)
+
+</p><p> <b> Incompatible assignments</b>
+For any three distinct registers RA, RB, RC, if
+Assign(RA,RB,I) then not Assign(RB,RA,I); not Assign(RA,RC,I); and not 
+Assign(RB,RC,I).
+
+</p><p> <b> Starting state. </b>
+Value(R,V,0) for each register R and its value V at time 0.
+
+</p><p> <b> Goal state. </b> 
+Value(R,V,K) for each register R and its goal value V.
+
+</p><h3> Specifications </h3>
+<h4> Input / Output. </h4>
+All three programs take their input from a text file 
+produce their output to a text file. (If you want, you may use 
+standard input and output.)
+
+
+<h4> Davis-Putnam </h4>
+The input to the Davis-Putnam procedure has the following form:
+An atom is denoted by a natural number: 1,2,3 ...  The literal P
+is the same number as atom P; the literal ~P is the negative.
+A clause is a line of text containing the integers of the corresponding
+literals.  After all the clauses have been given, the next line is the
+single value 0; anything further in the file is ignored in the 
+execution of the procedure and reproduced at the end of the output file.
+(This is the mechanism we will use to allow the front end to communicate
+to the back end.)
+
+<p>
+The output from the Davis-Putnam procedure has the following form:
+First, a list of pairs of atom (a natural number) and truth value
+(either T or F).  Second, a line containing the single value 0. Third,
+the back matter from the input file, reproduced.
+
+</p><p>
+Example: Given the input
+</p><pre>1 2 3 
+-2 3 
+-3 
+0 
+This is a simple example with 3 clauses and 3 atoms.
+</pre>
+
+
+
+
+
+
+Davis-Putnam will generate the output
+<pre>1 T 
+2 F
+3 F
+0 
+This is a simple example with 3 clauses and 3 atoms.
+</pre>
+
+This corresponds to the clauses
+<pre>P V Q V R. 
+~Q V R. 
+~R. 
+</pre>
+
+
+<p>
+If the clauses have no solution, then Davis-Putnam outputs a single
+line containing a 0, followed by the back-matter in the input file.
+
+</p><p>
+Note: Your implementation of Davis-Putnam must work on <em>any</em> 
+set of clauses,
+not just those that are generated by the Maze program.
+
+</p><p>
+You may assume that there are no more than 1000 atoms and no more than 10,000
+clauses.
+
+
+
+</p><h4> Front end </h4>
+The front end takes as input a problem specification 
+and generates as
+output a set of clauses to be satisfied.
+
+<p>
+The format of the input contains the following elements
+</p><ul>
+<li> First line: A list of alternative registers and values at the start
+state, separated by white space. Assume that the
+registers are numbers in increasing order and that the value are simple
+alphabetical symbols. 
+</li><li>  Second line: A specification of the goal state: same format as first
+line.
+</li><li>  Third line: The time limit K,
+</li></ul>
+
+For example, for problem 1, the input is.
+
+<pre>1 A 2 B 3 C 4 D
+2 A 3 A 4 C
+2
+</pre>
+<p>
+You may assume that the input
+is correctly formatted.  You do not have to do any error checking on the 
+input. 
+
+
+
+
+The output consists of
+</p><ul>
+<li> 1. A set of clauses suitable for inputting to Davis-Putnam as described
+above.  
+
+</li><li> 2. A key to allow the back end to  translate the numbers used for 
+propositional atoms in
+the clauses into the correct path.
+The format of this is up to you.
+My suggestion would be that, for each action atom A, you have a line of
+the form "proposition-number A"
+</li></ul>
+
+
+<h4> Back-end </h4>
+The back end takes as input the output that Davis-Putnam generates when run
+on the output of the front end.  It outputs the solution in the form of the 
+above examples.
+
+If the input indicates that the clauses have no solution, the back end
+should output the message "No Solution".
+
+<h3> Another example for Davis-Putnam </h3>
+The following is the input-output pair just for the Davis-Putnam module ---
+<em> not </em> the front and back ends --- corresponding to the example
+in the class notes.
+<ul>
+<li> <a href="http://cs.nyu.edu/faculty/davise/ai/dp-in2.txt"> 
+Input for Davis-Putnam </a> 
+</li><li> <a href="http://cs.nyu.edu/faculty/davise/ai/dp-out2.txt"> 
+Output from Davis-Putnam </a> 
+</li></ul>
+
+<h3> Deliverable </h3>
+You should upload to the NYU Classes site
+(a) the source code; (b) instructions for running it,
+if there's anything at all non-obvious about it.  Nothing else.
+
+
+<h3> Grading </h3>
+The Davis-Putnam program is worth 60% of the grade; the front end is worth
+35%; the back end is worth 5%.  In each of these,  a program that does
+not compile will get a maximum of 10%; a correct program 
+will get 90%; the remaining 10% is for being well-written and
+well commented.
+
+
+</body></html>
